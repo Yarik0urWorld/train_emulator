@@ -2,10 +2,22 @@
 This is a game, where you need to drive a train and avoid obstacles.
 
 HOW TO START PLAYING.
-  1. Install Ursina Engine by running
-    $ pip install ursina
-  2. To start playing, run
-    $ python main3d.py
+  WINDOWS
+    1. Download online installer from release page and run it.
+       Note: You need internet connection to install the game.
+    2. Installer will do anything automatically: install and prepare Python,
+       install needed packages and make link.
+    3. If path to your user folder contains non-AICII and non-russian symbols,
+       link won't be created. You must create it by yourself, or
+       don't use it. You can run game using RUN.bat in "Data" folder
+       on your desktop.
+    4. DO NOT DELETE "Data" FOLDER! The entire game
+       with all packages and engine is stored in this folder.
+  LINUX
+    1. Install Ursina Engine by running
+      $ pip install ursina
+    2. To start playing, run
+      $ python main3d.py
   
 
 
