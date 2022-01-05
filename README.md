@@ -19,10 +19,8 @@ WINDOWS
 
 LINUX
 
-1. Install Ursina Engine by running
-$ pip install ursina
-2. To start playing, run
-$ python main3d.py
+1. Install Ursina Engine by running "pip install ursina"
+2. To start playing, run "python main3d.py"
   
 
 
