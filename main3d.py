@@ -6,14 +6,11 @@ from random import randint
 import sys  # sys.stderr
 
 premium = False
-EASY = (500, 2000)
-MEDIUM = (300, 1000)
-HARD = (300, 500)
 
 
 def main():
     app = Ursina()
-
+    
     prepare_window()
     System()
 
@@ -28,6 +25,21 @@ def prepare_window():
     camera.rotation_y = 90
 
 
+class Difficulty:
+    EASY = None
+    MEDIUM = None
+    HARD = None
+    
+    def __init__(self, obstacle_time_range, score):
+        self.obstacle_time_range = obstacle_time_range
+        self.score = score
+
+
+Difficulty.EASY = Difficulty((5000, 20000), 1)
+Difficulty.MEDIUM = Difficulty((3000, 10000), 2)
+Difficulty.HARD = Difficulty((3000, 5000), 3)
+
+
 class System(Entity):
     def __init__(self):
         Entity.__init__(self)
@@ -36,10 +48,20 @@ class System(Entity):
 
         self.textures_loaded = 0
         self.info = Text('Press space to start...', origin=(0, 0), size=0.1)
-        self.textures_to_load = ['gravel', 'rails', 'wall', 'round', 'arrow', 'wall2']
+        self.textures_to_load = [
+            'gravel',
+            'rails',
+            'wall',
+            'round',
+            'arrow',
+            'wall2',
+            'gauge',
+            'needle',
+            'nitro'
+        ]
         self.texture_folder = 'textures_jpg'
         self.world = World(200, difficulty=None)
-        self.train = Train(40, 7, 2.5, self.world.road_length - 1)
+        self.train = Train(40, 7, 2.5, 50, 2, 15, self.world.road_length - 1)
         # self.train.pos = 190
         self.difficulty_screen = False
         
@@ -48,15 +70,22 @@ class System(Entity):
         self.round = None
         self.arrow_up = None
         self.arrow_down = None
+        self.brake_gauge = None
+        self.brake_gauge_needle = None
+        self.nitro = None
 
         self.train.bind_road_end(self.win)
 
     def input(self, key):
         if key == 'escape':
-            application.quit()
+            window.exit_button.on_click()
         elif key == 'space':
             if not self.textures_loaded:
                 self.choose_difficulty()
+            else:
+                self.train.is_brake_active = True
+        elif key == 'space up':
+            self.train.is_brake_active = False
         elif key == 'a':
             if self.train.movement_q > -1:
                 self.train.movement_q -= 1
@@ -69,17 +98,20 @@ class System(Entity):
         elif key == 's':
             if self.train.gear > 0:
                 self.train.gear -= 1
-                
+        elif key == 'c':
+            self.train.nitro()
+            self.nitro.enabled = False
+        
         elif key == 'e' and self.difficulty_screen:
-            self.world.difficulty = EASY
+            self.world.difficulty = Difficulty.EASY
             self.end_difficulty_screen()
             
         elif key == 'm' and self.difficulty_screen:
-            self.world.difficulty = MEDIUM
+            self.world.difficulty = Difficulty.MEDIUM
             self.end_difficulty_screen()
-            
+
         elif key == 'h' and self.difficulty_screen:
-            self.world.difficulty = HARD
+            self.world.difficulty = Difficulty.HARD
             self.end_difficulty_screen()
             
         elif key == 'e' and not self.difficulty_screen and premium:
@@ -113,23 +145,45 @@ class System(Entity):
         self.world.create_entities()
         self.train.panda3d_start()
 
-    def prepare_ui(self):
+    def update_ui_pos(self):
         round_pos = (0.4 * window.aspect_ratio, -0.35)
+        brake_gauge_pos = (-0.25 * window.aspect_ratio)
 
-        self.gear_text = Text('', position=(-0.5 * window.aspect_ratio, -0.35), size=0.07)
+        if self.gear_text is not None:
+            self.gear_text.position = (-0.5 * window.aspect_ratio, -0.35)
+        if self.round is not None:
+            self.round.position = round_pos
+        if self.arrow_up is not None:
+            self.arrow_up.position =(round_pos[0] + 0.1, round_pos[1] + 0.1)
+        if self.arrow_down is not None:
+            self.arrow_down.position = (round_pos[0] - 0.1, round_pos[1] + 0.1)
+        if self.brake_gauge is not None:
+            self.brake_gauge.position = brake_gauge_pos
+        if self.brake_gauge_needle is not None:
+            self.brake_gauge_needle.position = brake_gauge_pos
+        
+    def prepare_ui(self):
+        self.gear_text = Text('', size=0.07)
         self.speed_text = Text('', position=(0, -0.35), size=0.05)
         self.round = Entity(model='quad', texture='round', scale=(0.1, 0.1, 0.1),
-                            position=round_pos, parent=camera.ui)
+                            parent=camera.ui)
         self.arrow_up = Entity(model='quad', texture='arrow', scale=(0.05, 0.05, 0.05),
-                               position=(round_pos[0] + 0.1, round_pos[1] + 0.1), parent=camera.ui)
+                               parent=camera.ui)
         self.arrow_up.rotation_z = -90
         self.arrow_down = Entity(model='quad', texture='arrow', scale=(0.05, 0.05, 0.05),
-                                 position=(round_pos[0] - 0.1, round_pos[1] + 0.1), parent=camera.ui)
+                                 parent=camera.ui)
         self.arrow_down.rotation_z = 90
-
+        self.brake_gauge = Entity(model='quad', texture='gauge', scale=(0.2, 0.2, 0.2),
+                            parent=camera.ui)
+        self.brake_gauge_needle = Entity(model='quad', texture='needle', scale=(0.2, 0.2, 0.2),
+                            parent=camera.ui)
+        self.nitro = Entity(model='quad', texture='nitro', scale=(0.1, 0.1, 0.1),
+                            position=(0.2, -0.3), parent=camera.ui)
+        self.update_ui_pos()
         # Used to delete all UI
         self.ui = [self.gear_text, self.speed_text, self.round,
-                   self.arrow_up, self.arrow_down]
+                   self.arrow_up, self.arrow_down, self.brake_gauge, self.brake_gauge_needle,
+                   self.nitro]
     def update(self):
         camera.x = self.train.pos
 
@@ -139,10 +193,14 @@ class System(Entity):
             self.speed_text.text = str(round(self.train.current_speed)) + ' km/h'
         if self.round is not None:
             self.round.rotation_z = self.train.movement_q * 45
-
+        if self.brake_gauge_needle is not None:
+            self.brake_gauge_needle.rotation_z = self.train.brake_left * 250 - 190
+            
         for i in self.world.obstacles:
             if camera.intersects(i).hit:
                 self.lose()
+
+        self.update_ui_pos()
 
     def end_game(self, msg):
         self.train.running = False
@@ -152,7 +210,7 @@ class System(Entity):
             if i is not None:
                 i.enabled = False
             else:
-                print("[WARN] UI element is None, but it shouldn't", file=sys.stderr)
+                print("Warning: UI element is None, but it shouldn't", file=sys.stderr)
 
         self.enabled = False
     
@@ -166,7 +224,7 @@ class System(Entity):
 class Obstacle(Entity):
     DISAPPEARED_Z_POS = 3 # Z position when disappeared
     
-    def __init__(self, pos, difficulty=MEDIUM):
+    def __init__(self, pos, difficulty=Difficulty.MEDIUM):
         Entity.__init__(self, model='quad', position=(pos, 0, self.DISAPPEARED_Z_POS),
                         scale=(3, 3, 0.0001), collider='box', texture='wall2')
         self.rotation_y = 90
@@ -187,11 +245,11 @@ class Obstacle(Entity):
         self.appear()
         invoke(self.disappear, delay=2)
         
-        invoke(self.main_appear, delay=(randint(*self.difficulty) / 100))
+        invoke(self.main_appear, delay=(randint(*self.difficulty.obstacle_time_range) / 1000))
 
 
 class World:
-    def __init__(self, road_length, difficulty=MEDIUM):
+    def __init__(self, road_length, difficulty=Difficulty.MEDIUM):
         self.left_sides = []
         self.right_sides = []
         self.rails = []
@@ -240,4 +298,4 @@ class World:
 
 
 if __name__ == '__main__':
-    main() 
+    main()
