@@ -8,8 +8,8 @@ WINDOWS
       Note: You need internet connection to install the game.
 
    2. Installer will do anything automatically: install and prepare Python,
-      install needed packages and make link.
-   3. If path to your user folder contains non-AICII and non-russian symbols,
+      install needed packages and make a link.
+   3. If path to your user folder contains non-ASCII and non-russian symbols,
       link won't be created. You must create it by yourself, or
       don't use it. You can run game using RUN.bat in "Data" folder
       on your desktop.
